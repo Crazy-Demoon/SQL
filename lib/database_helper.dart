@@ -1,6 +1,5 @@
-import 'dart:async';
 import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart'; // Asegúrate de tener esta línea
 
 class DatabaseHelper {
   static final _databaseName = "myApp.db";
@@ -34,6 +33,7 @@ class DatabaseHelper {
 
   // Crea la tabla de usuarios
   Future _onCreate(Database db, int version) async {
+    // Crear la tabla de usuarios
     await db.execute('''
           CREATE TABLE $table (
             $columnId INTEGER PRIMARY KEY,
@@ -42,6 +42,14 @@ class DatabaseHelper {
             $columnIsAdmin INTEGER NOT NULL
           )
           ''');
+
+    // Insertar el admin por defecto
+    await db.insert(table, {
+      columnEmail: 'admin@myapp.com',
+      columnPassword:
+          'admin123', // Es recomendable cifrar la contraseña en producción
+      columnIsAdmin: 1, // 1 para admin
+    });
   }
 
   // Insertar un usuario
@@ -50,7 +58,7 @@ class DatabaseHelper {
     return await db.insert(table, row);
   }
 
-  // Consultar un usuario (básico, sin cifrado ni seguridad)
+  // Consultar un usuario por correo y contraseña
   Future<Map<String, dynamic>?> getUser(String email, String password) async {
     Database db = await instance.database;
     List<Map> results = await db.query(table,
@@ -60,5 +68,36 @@ class DatabaseHelper {
       return results.first as Map<String, dynamic>;
     }
     return null;
+  }
+
+  // Obtener usuario por correo
+  Future<Map<String, dynamic>?> getUserByEmail(String email) async {
+    final db = await database;
+    final result = await db.query(
+      'users',
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+    return result.isNotEmpty ? result.first : null;
+  }
+
+  // Obtener todos los usuarios
+  Future<List<Map<String, dynamic>>> getAllUsers() async {
+    final db = await database;
+    final result = await db.query(table);
+    return result;
+  }
+
+  // Actualizar un usuario
+  Future<int> updateUser(Map<String, dynamic> row) async {
+    Database db = await instance.database;
+    int id = row[columnId];
+    return await db.update(table, row, where: '$columnId = ?', whereArgs: [id]);
+  }
+
+  // Eliminar un usuario
+  Future<int> deleteUser(int id) async {
+    Database db = await instance.database;
+    return await db.delete(table, where: '$columnId = ?', whereArgs: [id]);
   }
 }

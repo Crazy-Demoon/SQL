@@ -19,9 +19,15 @@ class MyApp extends StatelessWidget {
         '/': (context) => WelcomePage(),
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
-        '/admin': (context) => AdminPanel(),
+        '/admin': (context) => UserManagementPage(),
         '/user': (context) => UserPanel(),
       },
+      theme: ThemeData(
+        pageTransitionsTheme: PageTransitionsTheme(builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        }),
+      ),
     );
   }
 }
@@ -29,7 +35,6 @@ class MyApp extends StatelessWidget {
 class WelcomePage extends StatelessWidget {
   const WelcomePage({Key? key}) : super(key: key);
 
-  // Aquí agregamos una animación de fondo simple con AnimatedContainer.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,23 +50,44 @@ class AnimatedBackground extends StatefulWidget {
   _AnimatedBackgroundState createState() => _AnimatedBackgroundState();
 }
 
-class _AnimatedBackgroundState extends State<AnimatedBackground> {
+class _AnimatedBackgroundState extends State<AnimatedBackground>
+    with TickerProviderStateMixin {
   Color _color = Colors.blue;
+
+  late AnimationController _scaleController;
+  late AnimationController _rotationController;
 
   @override
   void initState() {
     super.initState();
     _animateBackground();
+
+    // Inicialización del controlador de animaciones
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 2),
+    )..repeat();
   }
 
   void _animateBackground() async {
     while (mounted) {
       await Future.delayed(Duration(seconds: 3));
       setState(() {
-        // Alterna entre dos colores de fondo, podrías mejorar la animación o agregar imágenes.
         _color = _color == Colors.blue ? Colors.purple : Colors.blue;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    _rotationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -73,22 +99,41 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              'Bienvenido',
-              style: TextStyle(fontSize: 32, color: Colors.white),
+            AnimatedDefaultTextStyle(
+              duration: Duration(seconds: 1),
+              style: TextStyle(
+                fontSize: 32,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              child: Text('Bienvenido'),
             ),
             SizedBox(height: 20),
-            ElevatedButton(
-              child: Text('Iniciar sesión'),
-              onPressed: () {
-                Navigator.pushNamed(context, '/login');
-              },
+            // Botón con animación de escalado
+            ScaleTransition(
+              scale: Tween(begin: 1.0, end: 1.2).animate(
+                CurvedAnimation(
+                  parent: _scaleController,
+                  curve: Curves.easeInOut,
+                ),
+              ),
+              child: ElevatedButton(
+                child: Text('Iniciar sesión'),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/login');
+                },
+              ),
             ),
-            ElevatedButton(
-              child: Text('Registrarse'),
-              onPressed: () {
-                Navigator.pushNamed(context, '/register');
-              },
+            SizedBox(height: 20),
+            // Botón con animación de rotación
+            RotationTransition(
+              turns: _rotationController,
+              child: ElevatedButton(
+                child: Text('Registrarse'),
+                onPressed: () {
+                  Navigator.pushNamed(context, '/register');
+                },
+              ),
             ),
           ],
         ),
