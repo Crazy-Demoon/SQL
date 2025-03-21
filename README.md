@@ -20,3 +20,7 @@ Este es un proyecto **Flutter** que incluye un panel de usuario y administrador.
 
    ```bash
    git clone https://github.com/tu-usuario/tu-repositorio.git
+
+## 🧑‍💻 Licencia
+
+Este proyecto está bajo la licencia [MIT](LICENSE).
