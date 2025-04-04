@@ -10,6 +10,7 @@ class _MapScreenState extends State<MapScreen> {
   GoogleMapController? mapController;
   final LatLng _actopan = const LatLng(20.2706, -98.9450);
   final Set<Marker> _markers = {};
+  final Map<String, dynamic> _markersData = {};
   int _markerIdCounter = 0;
   final Color _primaryColor = Colors.blue.shade800;
 
@@ -30,25 +31,99 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  void _addNewMarker(Map<String, dynamic> data) {
-    final String markerId = 'marker_${_markerIdCounter++}';
+  void _addNewMarker(Map<String, dynamic> data, {String? markerId}) {
+    final String newMarkerId = markerId ?? 'marker_${_markerIdCounter++}';
 
     setState(() {
+      _markers.removeWhere((m) => m.markerId == MarkerId(newMarkerId));
       _markers.add(
         Marker(
-          markerId: MarkerId(markerId),
+          markerId: MarkerId(newMarkerId),
           position: data['position'],
           infoWindow: InfoWindow(
             title: data['title'],
             snippet: data['description'],
           ),
           icon: BitmapDescriptor.defaultMarkerWithHue(210),
-          onTap: () {
-            mapController?.showMarkerInfoWindow(MarkerId(markerId));
-          },
+          onTap: () => _showMarkerOptions(MarkerId(newMarkerId)),
         ),
       );
+      _markersData[newMarkerId] = data;
     });
+  }
+
+  void _showMarkerOptions(MarkerId markerId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Opciones del marcador'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Editar'),
+              onTap: () {
+                Navigator.pop(context);
+                _editMarker(markerId);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Eliminar'),
+              onTap: () {
+                Navigator.pop(context);
+                _deleteMarker(markerId);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editMarker(MarkerId markerId) async {
+    final markerData = _markersData[markerId.value];
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MarkerFormScreen(
+          position: markerData['position'],
+          initialTitle: markerData['title'],
+          initialDescription: markerData['description'],
+        ),
+      ),
+    );
+
+    if (result != null) {
+      _addNewMarker(result, markerId: markerId.value);
+    }
+  }
+
+  void _deleteMarker(MarkerId markerId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar eliminación'),
+        content: const Text('¿Estás seguro de eliminar este marcador?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _markers.removeWhere((m) => m.markerId == markerId);
+                _markersData.remove(markerId.value);
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -88,8 +163,15 @@ class _MapScreenState extends State<MapScreen> {
 
 class MarkerFormScreen extends StatefulWidget {
   final LatLng position;
+  final String? initialTitle;
+  final String? initialDescription;
 
-  const MarkerFormScreen({Key? key, required this.position}) : super(key: key);
+  const MarkerFormScreen({
+    Key? key,
+    required this.position,
+    this.initialTitle,
+    this.initialDescription,
+  }) : super(key: key);
 
   @override
   _MarkerFormScreenState createState() => _MarkerFormScreenState();
@@ -100,6 +182,13 @@ class _MarkerFormScreenState extends State<MarkerFormScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final Color _primaryColor = Colors.blue.shade800;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController.text = widget.initialTitle ?? '';
+    _descriptionController.text = widget.initialDescription ?? '';
+  }
 
   @override
   void dispose() {
@@ -122,7 +211,8 @@ class _MarkerFormScreenState extends State<MarkerFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nuevo Marcador'),
+        title: Text(
+            widget.initialTitle == null ? 'Nuevo Marcador' : 'Editar Marcador'),
         backgroundColor: _primaryColor,
         foregroundColor: Colors.white,
       ),
@@ -149,7 +239,9 @@ class _MarkerFormScreenState extends State<MarkerFormScreen> {
         Icon(Icons.place, size: 50, color: _primaryColor),
         const SizedBox(height: 10),
         Text(
-          'Agregar nuevo lugar',
+          widget.initialTitle == null
+              ? 'Agregar nuevo lugar'
+              : 'Editar lugar existente',
           style: TextStyle(
             fontSize: 20,
             color: _primaryColor,
@@ -241,7 +333,9 @@ class _MarkerFormScreenState extends State<MarkerFormScreen> {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
         onPressed: _submitForm,
-        child: const Text('Guardar Marcador', style: TextStyle(fontSize: 16)),
+        child: Text(
+            widget.initialTitle == null ? 'Guardar Marcador' : 'Actualizar',
+            style: const TextStyle(fontSize: 16)),
       ),
     );
   }
